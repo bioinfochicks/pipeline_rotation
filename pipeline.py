@@ -16,6 +16,7 @@ small_bed = sys.argv[3]
 sample_list = glob.glob("/example_fastqs/" + sample_id + "*.fastq.gz")
 out_dir = "/home/stpuser/Results/{id}".format(id = sample_id)
 reference = "/reference_files/ucsc.hg19.nohap.masked.fasta"
+dbsnp = "/reference_files/dbsnp/common_all_20161122.vcf.gz"
 
 def run_cmd(cmd):
 	try:
@@ -158,11 +159,10 @@ def realign_indels(sample_id):
 	out_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG_indelsrealigned.bam"
 	intervals = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_forIndelRealigner.intervals"
 	regions = broad_bed
-	
-	
+
 	index_bam(in_bam) # remove this after next run
-	cmd1 = "java -jar /software/GenomeAnalysisTK-3.6/GenomeAnalysisTK.jar -T RealignerTargetCreator -R " + reference + " -I " + in_bam + " -o " + intervals + " -L " + regions 
-	cmd2 = "java -jar /software/GenomeAnalysisTK-3.6/GenomeAnalysisTK.jar -T IndelRealigner -R " + reference + " -I " + in_bam + " -targetIntervals " + intervals + " -o " + out_bam + " -L " + regions 
+	cmd1 = "java -jar /software/GenomeAnalysisTK-3.6/GenomeAnalysisTK.jar -T RealignerTargetCreator -R " + reference + " -I " + in_bam + " -dt NONE -o " + intervals + " -L " + regions 
+	cmd2 = "java -jar /software/GenomeAnalysisTK-3.6/GenomeAnalysisTK.jar -T IndelRealigner -R " + reference + " -I " + in_bam + " -targetIntervals " + intervals + " -dt NONE -o " + out_bam + " -L " + regions 
 	run_cmd(cmd1) 
 	run_cmd(cmd2)
 	print(cmd1)
@@ -187,25 +187,42 @@ def get_hs_stats(sample_id):
 	print(cmd3)
 	run_cmd(cmd3)
 
-#	if (os.path.isfile(intervals)):
-#		run_cmd(cmd2)
-#		if (os.path.isfile(out_bam)):
-#			return True
-#		else: 
-#			return False
-#	else:
-#		return False
+	
+def call_variants(sample_id):
+	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG_indelsrealigned.bam" 
+	out_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants.vcf"
+	
+	cmd="java -jar /software/GenomeAnalysisTK-3.6/GenomeAnalysisTK.jar -T HaplotypeCaller -R " + reference + " -dt NONE -I " + in_bam + " -stand_call_conf 30 -o " + out_vcf + " -L /home/stpuser/Results/" + sample_id + "\/target.intervals"
+	print(cmd)
+	run_cmd(cmd)
 
+def decompose_vcf(sample_id):
+	in_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants.vcf"
+	out_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants_decomposed.vcf"
+	
+	cmd = "vt decompose " + in_vcf + " -o " + out_vcf
+	run_cmd(cmd)
+	
+def annotate_variants(sample_id):
+	in_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants_decomposed.vcf"
+	out_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants_exac.vcf"
+	
+	cmd= "java -Xmx4g -jar /software/snpEff/SnpSift.jar annotate -v /reference_files/exac/ExAC.r0.3.1.sites.vep.vcf.gz " + in_vcf + " > " + out_vcf
+	print(cmd)
+	run_cmd(cmd)
+	
 def main():
 	#run_fastqc(sample_list)
-	#run_alignment(sample_id, sample_list) #(sample_id, sample_list):
+	#run_alignment(sample_id, sample_list)
 	#qc_read_mappings(sample_id)
 	#mark_dups(sample_id)
 	#add_readgroup(sample_id)
 	#realign_indels(sample_id)
 	#get_hs_stats(sample_id) 
-	find_coverage(sample_id)
+	#find_coverage(sample_id)
+	#call_variants(sample_id)
+	#decompose_vcf(sample_id)
+	annotate_variants(sample_id)
 
 if __name__ == '__main__':
     main()
-
