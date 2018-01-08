@@ -19,6 +19,9 @@ reference = "/reference_files/ucsc.hg19.nohap.masked.fasta"
 dbsnp = "/reference_files/dbsnp/common_all_20161122.vcf.gz"
 
 def run_cmd(cmd):
+	"""
+	Method to run commands through bash shell
+	"""
 	try:
 		subprocess.call(cmd, shell=True)
 	except subprocess.CallProcessError as e: 
@@ -31,6 +34,9 @@ def make_dir(dir_path):
 	return
 	
 def log(to_log):
+	""" 
+	Method to write into log file
+	"""
 	fname = "/home/stpuser/Results/{id}/log.txt".format(id = sample_id)
 	with open(fname, "wb") as log_file:
 		log_file.write(to_log)
@@ -38,6 +44,9 @@ def log(to_log):
 		print("...logged.")
 		
 def run_fastqc(sample_list):
+	"""
+	Method to run fastQC. Requires the list of samples to be run through fastQC and puts the output into a folder dedicated to FastQC output
+	"""
 	#run fastqc on listed samples
 	for file in sample_list:
 		cmd = fastqc_path + " " + file + " " + "--outdir=" + fastqc_out 
@@ -73,6 +82,9 @@ def concat_files(sample_id, sample_list, out_dir):
 	return
 	
 def run_alignment(sample_id, sample_list):
+	"""
+	Uses BWA-MEM to perform alignments of reads. Requires the sample ID and the list of fastqcs to be aligned
+	"""
 	temp1 = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_temp1.bam"
 	temp2 = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_temp2.bam"
 	
@@ -111,10 +123,16 @@ def run_alignment(sample_id, sample_list):
 	#https://gatkforums.broadinstitute.org/gatk/discussion/6472/read-groups	
 	
 def index_bam(bam):
+	"""
+	Indexes a bam file. Requires the bam file path as input
+	"""
 	cmd = "samtools index " + bam
 	run_cmd(cmd)
 
 def qc_read_mappings(sample_id):
+	"""
+	Method to carry out QC step on mapped reads. Requires the sample ID and outputs a file containing samflagstats
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted.bam"
 	out_text = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_samflagstats.txt"
 	cmd = "samtools flagstat " + in_bam + " > " + out_text
@@ -122,6 +140,9 @@ def qc_read_mappings(sample_id):
 	run_cmd(cmd) 
 	
 def mark_dups(sample_id):
+	"""
+	Method to mark duplicate reads. Uses sambamba markdup and outputs a new bam file with duplicate reads marked
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted.bam"
 	out_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked.bam"
 	cmd = "sambamba markdup -p " + in_bam + " " + out_bam
@@ -129,6 +150,9 @@ def mark_dups(sample_id):
 	run_cmd(cmd)
 	
 def find_coverage(sample_id):
+	"""
+	Method to find coverage of alignment, including the depth at each base and the coverage for regions of interest. Requries the sample ID and outputs text files containing coverage/depth information.
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG_indelsrealigned.bam"
 	out1 = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_coverage_depth_base_small_panel.txt"
 	out2 = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_coverage_depth_region_small_panel.txt"
@@ -144,6 +168,9 @@ def find_coverage(sample_id):
 	run_cmd(cmd2)
 
 def add_readgroup(sample_id):
+	"""
+	Reads groups are necessary for carrying out downstream processes. Requries the sample ID and outputs a bam file with read group information added
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked.bam"
 	temp_bam = "/home/stpuser/Results/" + sample_id + "/temp.bam"
 	out_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG.bam"
@@ -155,6 +182,9 @@ def add_readgroup(sample_id):
 	
 # def off_target_reads(sample_id):
 def realign_indels(sample_id): 
+	"""
+	Method to carry out indel realignment using GATK. Requires sample ID, outputs realigned bam file
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG.bam"
 	out_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG_indelsrealigned.bam"
 	intervals = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_forIndelRealigner.intervals"
@@ -170,6 +200,9 @@ def realign_indels(sample_id):
 	index_bam(out_bam)
 	
 def get_hs_stats(sample_id):
+	"""
+	Method to generate hs stats by Picard, to collect information on on-target reads etc. Requires sampleID and outputs hs_meterics in text document
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG_indelsrealigned.bam"
 	bait = "/home/stpuser/Results/" + sample_id + "/bait.intervals"
 	intervals = "/home/stpuser/Results/" + sample_id + "/target.intervals"
@@ -189,6 +222,9 @@ def get_hs_stats(sample_id):
 
 	
 def call_variants(sample_id):
+	"""
+	Method to call variants using GATK. Requires sample ID, outputs VCF.
+	"""
 	in_bam = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_merged_sorted_dupsmarked_RG_indelsrealigned.bam" 
 	out_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants.vcf"
 	
@@ -197,6 +233,9 @@ def call_variants(sample_id):
 	run_cmd(cmd)
 
 def decompose_vcf(sample_id):
+	"""
+	Method to decompose variants that appear at the same genomic location, so they don't get annotated incorrectly. Outputs a decomposed vcf.
+	"""
 	in_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants.vcf"
 	out_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants_decomposed.vcf"
 	
@@ -204,6 +243,9 @@ def decompose_vcf(sample_id):
 	run_cmd(cmd)
 	
 def annotate_variants(sample_id):
+	""" 
+	Method to annotate the variants using ExAC. This will add information such as RS number and allele frequency. Outputs an annotated vcf.
+	"""
 	in_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants_decomposed.vcf"
 	out_vcf = "/home/stpuser/Results/" + sample_id + "/" + sample_id + "_Variants_exac.vcf"
 	
@@ -212,16 +254,16 @@ def annotate_variants(sample_id):
 	run_cmd(cmd)
 	
 def main():
-	#run_fastqc(sample_list)
-	#run_alignment(sample_id, sample_list)
-	#qc_read_mappings(sample_id)
-	#mark_dups(sample_id)
-	#add_readgroup(sample_id)
-	#realign_indels(sample_id)
-	#get_hs_stats(sample_id) 
-	#find_coverage(sample_id)
-	#call_variants(sample_id)
-	#decompose_vcf(sample_id)
+	run_fastqc(sample_list)
+	run_alignment(sample_id, sample_list)
+	qc_read_mappings(sample_id)
+	mark_dups(sample_id)
+	add_readgroup(sample_id)
+	realign_indels(sample_id)
+	get_hs_stats(sample_id) 
+	find_coverage(sample_id)
+	call_variants(sample_id)
+	decompose_vcf(sample_id)
 	annotate_variants(sample_id)
 
 if __name__ == '__main__':
